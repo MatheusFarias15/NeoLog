@@ -264,13 +264,13 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.picking_lists;
 -- DADOS INICIAIS (Produtos de exemplo)
 -- ============================================
 INSERT INTO public.products (sku, description, is_active) VALUES
-  ('PROD-001', 'Caixa de Papelão 30x30x30', true),
-  ('PROD-002', 'Fita Adesiva Transparente', true),
-  ('PROD-003', 'Etiqueta Adesiva A4', true),
-  ('PROD-004', 'Bubble Wrap (Plástico Bolha)', true),
-  ('PROD-005', 'Envelope Pardo A4', true),
-  ('PROD-006', 'Caixa de Papelão 50x50x50', true),
-  ('PROD-007', 'Fita Adesiva Marrom', true),
-  ('PROD-008', 'Sacola Plástica Grande', true),
-  ('PROD-009', 'Papel Kraft', true),
-  ('PROD-010', 'Estilete Profissional', true);
+  ('1005600', 'Partida  Retrátil  5.5 a 6.5 hp', true),
+  ('1066600', 'PONTEIRA TRANSMISSÃO ROÇADEIRA 9 ESTRIAS NO EIXO PARA TUBO 28MM', true),
+  ('1254512', 'Fio Nylon Roçadeira Quadrado 2kg - 3.0mm', true),
+  ('1957810', 'Carburador Motor Acionador 5.5/6.5', true),
+  ('1022400', 'Sapata Ajustável Regulável Andaime Tubular Aço', true),
+  ('23011919', 'MOTOR WEG 3CV 110/220V 60HZ3CV 4P MONO', true),
+  ('9339700', 'Motor para Betoneira monofásico 110/220V 60HZ 2CV 4P', true),
+  ('1022300', 'Vela De Ignição Roçadeira Roçadeira L7T', true),
+  ('1003606', 'Mangueira de Pressão 44MPA 5M Lavadora', true),
+  ('9019211', 'MANGUEIRA DE PRESSÃO 10M COMPATIVEL COM KARCHER', true);

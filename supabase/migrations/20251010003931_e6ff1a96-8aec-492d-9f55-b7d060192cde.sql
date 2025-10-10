@@ -158,25 +158,6 @@ ON public.user_roles FOR ALL
 TO authenticated
 USING (public.has_role(auth.uid(), 'GESTOR'));
 
--- 10. Add initial products data
-INSERT INTO public.products (sku, description) VALUES
-('1005600', 'Partida Retrátil 5.5 a 6.5 hp'),
-('1066600', 'PONTEIRA TRANSMISSÃO ROÇADEIRA 9 ESTRIAS NO EIXO PARA TUBO 28MM'),
-('70060600', 'PULVERIZADOR DE PRESSAO AMARELA SNOW FOAM - 700606'),
-('1254512', 'Fio Nylon Roçadeira Quadrado 2kg - 3.0mm'),
-('15015050', 'ESCOVA DE AÇO ROTATIVA PARA ROÇADEIRA'),
-('1957810', 'Carburador Motor Acionador 5.5/6.5 [ P]'),
-('1022400', 'Sapata Ajustável / Regulável Andaime Tubular Aço 1 ¼ 1 Peça'),
-('23011919', 'MOTOR WEG 3CV 110/220V 60HZ3CV 4P MONO'),
-('23011982', 'MOTOR MONO WEG 1CV 110/220V IP21 W56 B3D'),
-('23929323', 'MOTOR 2CV EBERLE BAIXA ROTAÇÃO 4 POLOS LNE3181'),
-('9339700', 'Motor para Betoneira monofásico 110/220V 60HZ 2CV 4P'),
-('1506400', 'Ponteira Completa Roçadeira Stihl Fs160 Fs220 Fs280 Fs290'),
-('1506500', 'Ponteira Roçadeira Tubo 26mm Compativel Stihl Fs55 / Fs80 / Fs85'),
-('1223330', 'Roda Plastica Para Betoneira Menegotti 250 / 400 Litros'),
-('1506600', 'Ponteira para Roçadeira 7T26')
-ON CONFLICT (sku) DO NOTHING;
-
 -- 11. Update handle_new_user function to use user_roles table
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER

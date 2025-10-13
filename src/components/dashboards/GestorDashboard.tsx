@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutDashboard, Users, Package } from 'lucide-react';
+import { LayoutDashboard, Users, Package, TrendingUp } from 'lucide-react';
 import { GestorOverview } from '@/components/gestor/GestorOverview';
 import { GestorUsers } from '@/components/gestor/GestorUsers';
 import { GestorProducts } from '@/components/gestor/GestorProducts';
+import { GestorTopItems } from '@/components/gestor/GestorTopItems';
 
 export function GestorDashboard() {
   return (
@@ -14,10 +15,14 @@ export function GestorDashboard() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+        <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
           <TabsTrigger value="overview" className="gap-2">
             <LayoutDashboard className="w-4 h-4" />
             Visão Geral
+          </TabsTrigger>
+          <TabsTrigger value="top-items" className="gap-2">
+            <TrendingUp className="w-4 h-4" />
+            Itens mais pedidos
           </TabsTrigger>
           <TabsTrigger value="users" className="gap-2">
             <Users className="w-4 h-4" />
@@ -31,6 +36,10 @@ export function GestorDashboard() {
 
         <TabsContent value="overview">
           <GestorOverview />
+        </TabsContent>
+
+        <TabsContent value="top-items">
+          <GestorTopItems />
         </TabsContent>
 
         <TabsContent value="users">

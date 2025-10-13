@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import {
@@ -31,16 +31,13 @@ interface ListItem {
   product_id: string;
   quantity: number;
   form: 'CAIXA' | 'UNIDADE';
-  // texto que o usuário digita (nome ou SKU)
-  product_label?: string;
+  searchTerm?: string;
 }
 
 export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDialogProps) {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [items, setItems] = useState<ListItem[]>([]);
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -65,23 +62,8 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
   };
 
   const addItem = () => {
-    setItems([...items, { product_id: '', quantity: 1, form: 'UNIDADE', product_label: '' }]);
+    setItems([...items, { product_id: '', quantity: 1, form: 'UNIDADE', searchTerm: '' }]);
   };
-
-  // refs for dropdown items: map of index -> array of item refs per row
-  const itemRefs = useRef<Record<number, HTMLDivElement[]>>({});
-  // refs for text inputs to preserve focus while typing
-  const inputRefs = useRef<Record<number, HTMLInputElement | null>>({});
-
-  useEffect(() => {
-    if (openIndex === null || highlightedIndex === null) return;
-    const refs = itemRefs.current[openIndex];
-    if (!refs) return;
-    const el = refs[highlightedIndex];
-    if (el && typeof el.scrollIntoView === 'function') {
-      el.scrollIntoView({ block: 'nearest' });
-    }
-  }, [highlightedIndex, openIndex]);
 
   const removeItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
@@ -93,11 +75,12 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
     setItems(newItems);
   };
 
-  const selectProductForItem = (index: number, product: Product) => {
-    updateItem(index, 'product_id', product.id);
-    updateItem(index, 'product_label', `${product.description} (${product.sku})`);
-    setOpenIndex(null);
-    setHighlightedIndex(null);
+  const getFilteredProducts = (searchTerm: string) => {
+    if (!searchTerm) return products;
+    return products.filter(product => 
+      product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.sku.toLowerCase().includes(searchTerm.toLowerCase())
+    );
   };
 
   const handleSubmit = async () => {
@@ -106,19 +89,7 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
       return;
     }
 
-    // Attempt to resolve items where user typed SKU/name but didn't select
-    const resolvedItems = items.map(item => {
-      if (item.product_id) return item;
-      const q = (item.product_label || '').trim().toLowerCase();
-      if (!q) return item;
-      const exact = products.find(p => p.sku.toLowerCase() === q);
-      if (exact) return { ...item, product_id: exact.id };
-      const filtered = products.filter(p => p.description.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
-      if (filtered.length === 1) return { ...item, product_id: filtered[0].id };
-      return item;
-    });
-
-    if (resolvedItems.some(item => !item.product_id || item.quantity <= 0)) {
+    if (items.some(item => !item.product_id || item.quantity <= 0)) {
       toast.error('Preencha todos os campos corretamente');
       return;
     }
@@ -141,7 +112,7 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
       const { error: itemsError } = await supabase
         .from('picking_list_items')
         .insert(
-          resolvedItems.map(item => ({
+          items.map(item => ({
             list_id: listData.id,
             product_id: item.product_id,
             quantity: item.quantity,
@@ -172,131 +143,54 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
         </DialogHeader>
 
         <div className="space-y-4">
-          {items.map((item, index) => (
-            <div key={index} className="grid grid-cols-12 gap-3 p-4 border rounded-lg bg-muted/50">
-              <div className="col-span-5 relative">
-                <Label className="text-xs">Produto</Label>
-                <Input
-                  placeholder="Digite nome ou SKU..."
-                  inputMode="text"
-                  autoComplete="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  value={item.product_label || ''}
-                  ref={(el: any) => (inputRefs.current[index] = el)}
-                  onChange={(e) => {
-                    // debug log to help identify focus/typing issues
-                    console.debug('product input change', index, e.target.value);
-                    updateItem(index, 'product_label', e.target.value);
-                    updateItem(index, 'product_id', '');
-                    setOpenIndex(index);
-                  }}
-                  onFocus={() => {
-                    console.debug('product input focus', index);
-                    setOpenIndex(index);
-                  }}
-                  onKeyDown={(e) => {
-                    const q = (item.product_label || '').trim().toLowerCase();
-                    const filtered = q
-                      ? products.filter(p => p.description.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q))
-                      : products;
-
-                    if (e.key === 'ArrowDown') {
-                      e.preventDefault();
-                      if (filtered.length === 0) return;
-                      setOpenIndex(index);
-                      setHighlightedIndex(prev => {
-                        const next = prev === null ? 0 : Math.min(filtered.length - 1, prev + 1);
-                        return next;
-                      });
-                    }
-
-                    if (e.key === 'ArrowUp') {
-                      e.preventDefault();
-                      if (filtered.length === 0) return;
-                      setOpenIndex(index);
-                      setHighlightedIndex(prev => {
-                        const next = prev === null ? filtered.length - 1 : Math.max(0, prev - 1);
-                        return next;
-                      });
-                    }
-
-                    if (e.key === 'Enter') {
-                      if (highlightedIndex !== null && filtered[highlightedIndex]) {
-                        e.preventDefault();
-                        selectProductForItem(index, filtered[highlightedIndex]);
-                        return;
-                      }
-                      if (!q) return;
-                      // try exact SKU match first
-                      const exact = products.find(p => p.sku.toLowerCase() === q);
-                      if (exact) {
-                        e.preventDefault();
-                        selectProductForItem(index, exact);
-                        return;
-                      }
-                      // if only one filtered result, select it
-                      if (filtered.length === 1) {
-                        e.preventDefault();
-                        selectProductForItem(index, filtered[0]);
-                      }
-                    }
-
-                    if (e.key === 'Escape') {
-                      setOpenIndex(null);
-                      setHighlightedIndex(null);
-                    }
-                  }}
-                  onBlur={() => setTimeout(() => setOpenIndex(null), 150)}
-                />
-
-                {/* Dropdown */}
-                {openIndex === index && (
-                  <div className="absolute z-50 w-full mt-1 max-h-60 overflow-auto rounded-md border bg-popover p-1 shadow-md">
-                    {(() => {
-                      const q = (item.product_label || '').trim().toLowerCase();
-                      const filtered = q
-                        ? products.filter(p => p.description.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q))
-                        : products;
-                      if (filtered.length === 0) return <div className="p-2 text-sm text-muted-foreground">Nenhum produto encontrado</div>;
-                      return filtered.map((p, i) => (
-                        <div
-                          key={p.id}
-                          ref={(el) => {
-                            if (!itemRefs.current[index]) itemRefs.current[index] = [];
-                            itemRefs.current[index][i] = el as HTMLDivElement;
-                          }}
-                          onPointerDown={(ev) => {
-                            ev.preventDefault();
-                            selectProductForItem(index, p);
-                          }}
-                          onTouchStart={(ev) => {
-                            ev.preventDefault();
-                            selectProductForItem(index, p);
-                          }}
-                          className={
-                            `cursor-pointer rounded px-3 py-3 touch-manipulation hover:bg-accent/80 hover:text-accent-foreground text-sm ${highlightedIndex === i ? 'bg-accent text-accent-foreground' : ''}`
-                          }
-                        >
-                          <div className="font-medium">{p.description}</div>
-                          <div className="text-xs text-muted-foreground">{p.sku}</div>
-                        </div>
-                      ));
-                    })()}
+          {items.map((item, index) => {
+            const filteredProducts = getFilteredProducts(item.searchTerm || '');
+            return (
+              <div key={index} className="space-y-2 p-4 border rounded-lg bg-muted/50">
+                <div className="grid grid-cols-12 gap-3">
+                  <div className="col-span-12">
+                    <Label className="text-xs">Buscar Produto</Label>
+                    <Input
+                      placeholder="Digite o nome ou SKU do produto..."
+                      value={item.searchTerm || ''}
+                      onChange={(e) => updateItem(index, 'searchTerm', e.target.value)}
+                      className="h-9"
+                    />
                   </div>
-                )}
-              </div>
+                </div>
+                <div className="grid grid-cols-12 gap-3">
+                  <div className="col-span-5">
+                    <Label className="text-xs">Produto</Label>
+                    <Select
+                      value={item.product_id}
+                      onValueChange={(value) => updateItem(index, 'product_id', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredProducts.length === 0 ? (
+                          <div className="p-2 text-sm text-muted-foreground text-center">
+                            Nenhum produto encontrado
+                          </div>
+                        ) : (
+                          filteredProducts.map((product) => (
+                            <SelectItem key={product.id} value={product.id}>
+                              {product.description} ({product.sku})
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
               <div className="col-span-3">
                 <Label className="text-xs">Quantidade</Label>
                 <Input
                   type="number"
                   min="1"
-                  value={String(item.quantity)}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value);
-                    updateItem(index, 'quantity', Number.isNaN(v) ? 1 : v);
-                  }}
+                  value={item.quantity}
+                  onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value))}
                 />
               </div>
 
@@ -316,18 +210,20 @@ export function CreateListDialog({ open, onOpenChange, onSuccess }: CreateListDi
                 </Select>
               </div>
 
-              <div className="col-span-1 flex items-end">
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  onClick={() => removeItem(index)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                  <div className="col-span-1 flex items-end">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => removeItem(index)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           <Button type="button" variant="outline" onClick={addItem} className="w-full">
             <Plus className="w-4 h-4 mr-2" />

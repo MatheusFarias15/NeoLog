@@ -5,8 +5,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { PackagePlus, Clock, CheckCircle2, Users, Package, TrendingUp, Timer } from 'lucide-react';
 import { toast } from 'sonner';
-import { format, differenceInMinutes } from 'date-fns';
+import { format, differenceInMinutes, startOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 
 interface PickingList {
   id: string;
@@ -33,6 +35,7 @@ export function GestorOverview() {
   });
   const [recentLists, setRecentLists] = useState<PickingList[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState<any[]>([]);
 
   useEffect(() => {
     fetchStats();
@@ -95,6 +98,34 @@ export function GestorOverview() {
       });
 
       setRecentLists(lists || []);
+
+      // Prepare chart data - group by day
+      const listsByDay = new Map<string, { count: number; totalTime: number; completedCount: number }>();
+      
+      lists?.forEach(list => {
+        const day = format(startOfDay(parseISO(list.created_at)), 'dd/MM');
+        const existing = listsByDay.get(day) || { count: 0, totalTime: 0, completedCount: 0 };
+        
+        existing.count += 1;
+        
+        if (list.status === 'CONCLUIDO' && list.completed_at) {
+          const time = differenceInMinutes(new Date(list.completed_at), new Date(list.updated_at));
+          existing.totalTime += time;
+          existing.completedCount += 1;
+        }
+        
+        listsByDay.set(day, existing);
+      });
+
+      const chartDataArray = Array.from(listsByDay.entries())
+        .map(([day, data]) => ({
+          day,
+          listas: data.count,
+          tempoMedio: data.completedCount > 0 ? Math.round(data.totalTime / data.completedCount) : 0,
+        }))
+        .slice(-7); // Last 7 days
+
+      setChartData(chartDataArray);
     } catch (error: any) {
       toast.error('Erro ao carregar estatísticas');
       console.error(error);
@@ -229,6 +260,62 @@ export function GestorOverview() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Gráfico de listas por dia vs tempo médio */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Listas Criadas vs Tempo Médio de Separação</CardTitle>
+          <CardDescription>Últimos 7 dias - Total de listas e tempo médio (em minutos)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer
+            config={{
+              listas: {
+                label: 'Listas Criadas',
+                color: 'hsl(var(--primary))',
+              },
+              tempoMedio: {
+                label: 'Tempo Médio (min)',
+                color: 'hsl(var(--accent))',
+              },
+            }}
+            className="h-[300px]"
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis 
+                  dataKey="day" 
+                  className="text-xs"
+                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                />
+                <YAxis 
+                  className="text-xs"
+                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="listas" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={2}
+                  name="Listas Criadas"
+                  dot={{ fill: 'hsl(var(--primary))' }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="tempoMedio" 
+                  stroke="hsl(var(--accent))" 
+                  strokeWidth={2}
+                  name="Tempo Médio (min)"
+                  dot={{ fill: 'hsl(var(--accent))' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        </CardContent>
+      </Card>
 
       {/* Tabela de listas recentes */}
       <Card>

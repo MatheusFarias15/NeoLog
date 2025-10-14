@@ -80,7 +80,7 @@ export function GestorOverview() {
           // Calculate time between list update (when separation started) and completion
           const minutes = differenceInMinutes(
             new Date(list.completed_at!),
-            new Date(list.updated_at)
+            new Date(list.updated_at || list.created_at)
           );
           return acc + minutes;
         }, 0);
@@ -103,13 +103,13 @@ export function GestorOverview() {
       const listsByDay = new Map<string, { count: number; totalTime: number; completedCount: number }>();
       
       lists?.forEach(list => {
-        const day = format(startOfDay(parseISO(list.created_at)), 'dd/MM');
+        const day = format(startOfDay(parseISO(list.completed_at || list.created_at)), 'dd/MM');
         const existing = listsByDay.get(day) || { count: 0, totalTime: 0, completedCount: 0 };
         
         existing.count += 1;
         
         if (list.status === 'CONCLUIDO' && list.completed_at) {
-          const time = differenceInMinutes(new Date(list.completed_at), new Date(list.updated_at));
+          const time = differenceInMinutes(new Date(list.completed_at), new Date(list.updated_at || list.created_at));
           existing.totalTime += time;
           existing.completedCount += 1;
         }
@@ -162,9 +162,9 @@ export function GestorOverview() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* KPIs principais */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="border-l-4 border-l-primary">
           <CardHeader className="pb-3">
             <CardDescription className="flex items-center gap-2">
@@ -214,7 +214,7 @@ export function GestorOverview() {
       </div>
 
       {/* Status das listas */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="hover:shadow-lg transition-shadow cursor-pointer">
           <CardHeader className="pb-3">
             <CardDescription className="flex items-center gap-2">
@@ -279,7 +279,7 @@ export function GestorOverview() {
                 color: 'hsl(var(--accent))',
               },
             }}
-            className="h-[300px]"
+            className="aspect-[16/9] w-full"
           >
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
@@ -324,7 +324,7 @@ export function GestorOverview() {
           <CardDescription>Histórico das últimas 20 listas de coleta</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>

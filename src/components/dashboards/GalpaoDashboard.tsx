@@ -177,7 +177,7 @@ export function GalpaoDashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
         <Card>
           <CardHeader className="pb-3">
             <CardDescription className="flex items-center gap-2">
@@ -202,7 +202,7 @@ export function GalpaoDashboard() {
         {lists.map((list) => (
           <Card key={list.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <div className="space-y-1">
                   <CardTitle className="flex items-center gap-2">
                     Lista #{list.id.slice(0, 8)}
@@ -219,7 +219,7 @@ export function GalpaoDashboard() {
                     Solicitado por {list.profiles?.full_name || 'Usuário'} • {format(new Date(list.created_at), "dd/MM 'às' HH:mm", { locale: ptBR })}
                   </CardDescription>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {list.status === 'PENDENTE' && (
                     <Button size="sm" onClick={() => handleStartList(list.id)}>
                       Iniciar Separação

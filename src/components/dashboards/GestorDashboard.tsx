@@ -15,7 +15,7 @@ export function GestorDashboard() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:w-[600px]">
           <TabsTrigger value="overview" className="gap-2">
             <LayoutDashboard className="w-4 h-4" />
             Visão Geral

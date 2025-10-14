@@ -85,7 +85,7 @@ export function GestorUsers() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-2xl font-bold">Gerenciamento de Usuários</h3>
           <p className="text-muted-foreground">Gerencie as contas do sistema</p>
@@ -102,11 +102,11 @@ export function GestorUsers() {
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                     {user.full_name}
                     <Badge className={getRoleBadge(user.role)}>{user.role}</Badge>
                   </CardTitle>
-                  <CardDescription className="flex items-center gap-4 text-sm">
+                  <CardDescription className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 text-sm">
                     <span className="flex items-center gap-1">
                       <Mail className="w-3 h-3" />
                       {user.email}

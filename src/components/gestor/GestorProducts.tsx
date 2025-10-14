@@ -92,12 +92,12 @@ export function GestorProducts() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
         {products.map((product) => (
           <Card key={product.id}>
             <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                   <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                     <PackageOpen className="w-5 h-5 text-primary" />
                   </div>

@@ -84,7 +84,7 @@ export function ExpedicaoDashboard() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-3">
             <CardDescription>Total de Listas</CardDescription>
@@ -124,9 +124,9 @@ export function ExpedicaoDashboard() {
         {lists.map((list) => (
           <Card key={list.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <div className="space-y-1">
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                     Lista #{list.id.slice(0, 8)}
                     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(list.status)}`}>
                       {getStatusIcon(list.status)}

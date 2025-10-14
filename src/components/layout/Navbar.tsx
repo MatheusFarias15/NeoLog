@@ -33,7 +33,7 @@ export function Navbar() {
         </div>
         
         {profile && (
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-medium text-foreground">{profile.full_name}</p>
               {role && (
@@ -42,9 +42,10 @@ export function Navbar() {
                 </Badge>
               )}
             </div>
-            <Button variant="outline" size="sm" onClick={signOut}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
+            <Button variant="outline" size="icon" className="sm:w-auto sm:px-4" onClick={signOut}>
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline ml-2">Sair</span>
+
             </Button>
           </div>
         )}

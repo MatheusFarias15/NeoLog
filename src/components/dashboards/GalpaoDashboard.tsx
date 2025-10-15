@@ -5,15 +5,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { PackagePlus, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { PackagePlus, CheckCircle2, Clock, AlertCircle, Package } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ItemAvailabilityDialog } from '@/components/dialogs/ItemAvailabilityDialog';
 
 export function GalpaoDashboard() {
   const [lists, setLists] = useState<any[]>([]);
   const [selectedList, setSelectedList] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showNotification, setShowNotification] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [showAvailabilityDialog, setShowAvailabilityDialog] = useState(false);
 
   useEffect(() => {
     fetchLists();
@@ -32,6 +35,8 @@ export function GalpaoDashboard() {
             quantity,
             form,
             is_collected,
+            is_available,
+            quantity_sent,
             products (sku, description)
           )
         `)
@@ -61,8 +66,6 @@ export function GalpaoDashboard() {
           console.log('Nova lista detectada!', payload);
           setShowNotification(true);
           fetchLists();
-          
-          // Auto-hide notification after 10 seconds
           setTimeout(() => setShowNotification(false), 10000);
         }
       )
@@ -80,9 +83,8 @@ export function GalpaoDashboard() {
         .update({ is_collected: !currentStatus })
         .eq('id', itemId);
 
-      if (error) throw error;
+    if (error) throw error;
 
-      // Update local state
       setSelectedList({
         ...selectedList,
         picking_list_items: selectedList.picking_list_items.map((item: any) =>
@@ -97,12 +99,9 @@ export function GalpaoDashboard() {
   };
 
   const handleCompleteList = async () => {
-    const allCollected = selectedList.picking_list_items.every((item: any) => item.is_collected);
-
-    if (!allCollected) {
-      toast.error('Marque todos os itens como coletados antes de finalizar');
-      return;
-    }
+    const allProcessed = selectedList.picking_list_items.every((item: any) =>
+      item.is_collected || !item.is_available
+    );
 
     try {
       const { error } = await supabase
@@ -145,18 +144,18 @@ export function GalpaoDashboard() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Notificação de Nova Lista */}
       {showNotification && (
-        <div className="fixed top-20 right-4 z-50 animate-in slide-in-from-top-5">
-          <Card className="border-4 border-warning bg-warning/10 shadow-2xl max-w-md">
+        <div className="fixed top-20 inset-x-4 z-50 animate-in slide-in-from-top-5">
+          <Card className="border-4 border-warning bg-warning/10 shadow-2xl max-w-md mx-auto">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-warning rounded-full flex items-center justify-center animate-pulse">
-                  <AlertCircle className="w-6 h-6 text-warning-foreground" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-warning rounded-full flex items-center justify-center animate-pulse">
+                  <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-warning-foreground" />
                 </div>
                 <div className="flex-1">
-                  <CardTitle className="text-xl">Nova Solicitação!</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl">Nova Solicitação!</CardTitle>
                   <CardDescription>Uma nova lista de coleta chegou</CardDescription>
                 </div>
               </div>
@@ -170,21 +169,23 @@ export function GalpaoDashboard() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
+      {/* Cabeçalho */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Fila de Trabalho</h2>
-          <p className="text-muted-foreground">Processe as listas de coleta</p>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Fila de Trabalho</h2>
+          <p className="text-sm text-muted-foreground">Processe as listas de coleta</p>
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+      {/* Métricas */}
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="pb-3">
             <CardDescription className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
               Aguardando
             </CardDescription>
-            <CardTitle className="text-3xl text-warning">{stats.pendentes}</CardTitle>
+            <CardTitle className="text-2xl sm:text-3xl text-warning">{stats.pendentes}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
@@ -193,46 +194,61 @@ export function GalpaoDashboard() {
               <PackagePlus className="w-4 h-4" />
               Em Separação
             </CardDescription>
-            <CardTitle className="text-3xl text-primary">{stats.emSeparacao}</CardTitle>
+            <CardTitle className="text-2xl sm:text-3xl text-primary">{stats.emSeparacao}</CardTitle>
           </CardHeader>
         </Card>
       </div>
 
-      <div className="space-y-4">
+      {/* Listas */}
+      <div className="space-y-3 sm:space-y-4">
         {lists.map((list) => (
           <Card key={list.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                <div className="space-y-1">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-1 min-w-0">
                   <CardTitle className="flex items-center gap-2">
-                    Lista #{list.id.slice(0, 8)}
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      list.status === 'PENDENTE' 
-                        ? 'bg-warning text-warning-foreground'
-                        : 'bg-primary text-primary-foreground'
-                    }`}>
-                      {list.status === 'PENDENTE' ? <Clock className="w-3 h-3" /> : <PackagePlus className="w-3 h-3" />}
+                    <span className="truncate">Lista #{list.id.slice(0, 8)}</span>
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-medium ${
+                        list.status === 'PENDENTE'
+                          ? 'bg-warning text-warning-foreground'
+                          : 'bg-primary text-primary-foreground'
+                      }`}
+                    >
+                      {list.status === 'PENDENTE' ? (
+                        <Clock className="w-3 h-3" />
+                      ) : (
+                        <PackagePlus className="w-3 h-3" />
+                      )}
                       {list.status.replace('_', ' ')}
                     </span>
                   </CardTitle>
-                  <CardDescription>
-                    Solicitado por {list.profiles?.full_name || 'Usuário'} • {format(new Date(list.created_at), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                  <CardDescription className="truncate">
+                    Solicitado por {list.profiles?.full_name || 'Usuário'} •{' '}
+                    {format(new Date(list.created_at), "dd/MM 'às' HH:mm", { locale: ptBR })}
                   </CardDescription>
                 </div>
-                <div className="flex flex-wrap gap-2">
+
+                <div className="flex flex-wrap gap-2 sm:justify-end">
                   {list.status === 'PENDENTE' && (
-                    <Button size="sm" onClick={() => handleStartList(list.id)}>
+                    <Button size="sm" onClick={() => handleStartList(list.id)} className="w-full sm:w-auto">
                       Iniciar Separação
                     </Button>
                   )}
-                  <Button size="sm" variant="outline" onClick={() => setSelectedList(list)}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelectedList(list)}
+                    className="w-full sm:w-auto"
+                  >
                     Ver Detalhes
                   </Button>
                 </div>
               </div>
             </CardHeader>
+
             <CardContent>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 {list.picking_list_items?.length || 0} itens •{' '}
                 {list.picking_list_items?.filter((i: any) => i.is_collected).length || 0} coletados
               </p>
@@ -253,34 +269,74 @@ export function GalpaoDashboard() {
 
       {/* Dialog de detalhes */}
       <Dialog open={!!selectedList} onOpenChange={() => setSelectedList(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[95vw] sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Detalhes da Lista #{selectedList?.id.slice(0, 8)}</DialogTitle>
-            <DialogDescription>
-              Marque os itens conforme forem coletados
-            </DialogDescription>
+            <DialogDescription>Marque os itens conforme forem coletados</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-            {selectedList?.picking_list_items?.map((item: any) => (
-              <div key={item.id} className="flex items-start gap-4 p-4 border rounded-lg">
-                <Checkbox
-                  checked={item.is_collected}
-                  onCheckedChange={() => handleToggleItem(item.id, item.is_collected)}
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <p className="font-medium">{item.products?.description || 'Produto não identificado'}</p>
-                  <p className="text-sm text-muted-foreground">{item.products?.sku || 'N/A'}</p>
-                  <p className="text-sm mt-1">
-                    Quantidade: <span className="font-medium">{item.quantity} {item.form}</span>
-                  </p>
+          <div className="space-y-3 sm:space-y-4 max-h-[65vh] overflow-y-auto pr-1 sm:pr-0">
+            {selectedList?.picking_list_items?.map((item: any) => {
+              const qtySent = item.quantity_sent ?? 0;
+              const isPartial = qtySent < item.quantity;
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 p-3 sm:p-4 border rounded-lg relative"
+                >
+                  <div className="order-1 sm:order-none">
+                    <Checkbox
+                      checked={item.is_collected}
+                      onCheckedChange={() => handleToggleItem(item.id, item.is_collected)}
+                      className="mt-0.5"
+                      disabled={!item.is_available}
+                    />
+                  </div>
+
+                  <div className="flex-1 min-w-0 order-2">
+                    <p className="font-medium truncate">
+                      {item.products?.description || 'Produto não identificado'}
+                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                      {item.products?.sku || 'N/A'}
+                    </p>
+                    <p className="text-xs sm:text-sm mt-1">
+                      Quantidade: <span className="font-medium">{item.quantity} {item.form}</span>
+                    </p>
+
+                    {!item.is_available && (
+                      <p className="text-[11px] sm:text-xs text-destructive mt-2 font-medium">
+                        Item marcado como indisponível
+                      </p>
+                    )}
+
+                    {isPartial && (
+                      <p className="text-[11px] sm:text-xs text-warning mt-2 font-medium">
+                        Quantidade enviada: {qtySent} {item.form}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="order-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedItem(item);
+                        setShowAvailabilityDialog(true);
+                      }}
+                      className="w-full sm:w-auto"
+                    >
+                      <Package className="w-4 h-4 mr-2" />
+                      Gerenciar
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          <div className="flex gap-2 pt-4">
+          <div className="flex flex-col sm:flex-row gap-2 pt-2 sm:pt-4">
             <Button variant="outline" onClick={() => setSelectedList(null)} className="flex-1">
               Fechar
             </Button>
@@ -291,6 +347,20 @@ export function GalpaoDashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de disponibilidade */}
+      <ItemAvailabilityDialog
+        item={selectedItem}
+        open={showAvailabilityDialog}
+        onOpenChange={setShowAvailabilityDialog}
+        onSuccess={() => {
+          fetchLists();
+          if (selectedList) {
+            const updatedList = lists.find(l => l.id === selectedList.id);
+            if (updatedList) setSelectedList(updatedList);
+          }
+        }}
+      />
     </div>
   );
 }

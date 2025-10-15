@@ -274,3 +274,12 @@ INSERT INTO public.products (sku, description, is_active) VALUES
   ('1022300', 'Vela De Ignição Roçadeira Roçadeira L7T', true),
   ('1003606', 'Mangueira de Pressão 44MPA 5M Lavadora', true),
   ('9019211', 'MANGUEIRA DE PRESSÃO 10M COMPATIVEL COM KARCHER', true);
+
+  -- Adicionar campos para controle de disponibilidade e quantidade enviada
+ALTER TABLE public.picking_list_items
+ADD COLUMN is_available boolean DEFAULT true,
+ADD COLUMN quantity_sent integer;
+
+-- Criar comentários para documentar os campos
+COMMENT ON COLUMN public.picking_list_items.is_available IS 'Indica se o item está disponível no estoque';
+COMMENT ON COLUMN public.picking_list_items.quantity_sent IS 'Quantidade efetivamente enviada (pode ser diferente da quantidade solicitada)';

@@ -3,12 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PackagePlus, Clock, CheckCircle2, Users, Package, TrendingUp, Timer } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { PackagePlus, Clock, CheckCircle2, Users, Package, TrendingUp, Timer, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, differenceInMinutes, startOfDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { PendingStockItems } from './PendingStockItems';
+import { ListDetailsDialog } from './ListDetailsDialog';
 
 interface PickingList {
   id: string;
@@ -36,6 +39,8 @@ export function GestorOverview() {
   const [recentLists, setRecentLists] = useState<PickingList[]>([]);
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<any[]>([]);
+  const [selectedList, setSelectedList] = useState<any>(null);
+  const [showListDialog, setShowListDialog] = useState(false);
 
   useEffect(() => {
     fetchStats();
@@ -49,7 +54,15 @@ export function GestorOverview() {
         .select(`
           *,
           profiles (full_name, email),
-          picking_list_items (id)
+          picking_list_items (
+            id,
+            quantity,
+            form,
+            is_collected,
+            is_available,
+            quantity_sent,
+            products (sku, description)
+          )
         `)
         .order('created_at', { ascending: false })
         .limit(20);
@@ -80,7 +93,7 @@ export function GestorOverview() {
           // Calculate time between list update (when separation started) and completion
           const minutes = differenceInMinutes(
             new Date(list.completed_at!),
-            new Date(list.updated_at || list.created_at)
+            new Date(list.updated_at)
           );
           return acc + minutes;
         }, 0);
@@ -103,13 +116,13 @@ export function GestorOverview() {
       const listsByDay = new Map<string, { count: number; totalTime: number; completedCount: number }>();
       
       lists?.forEach(list => {
-        const day = format(startOfDay(parseISO(list.completed_at || list.created_at)), 'dd/MM');
+        const day = format(startOfDay(parseISO(list.created_at)), 'dd/MM');
         const existing = listsByDay.get(day) || { count: 0, totalTime: 0, completedCount: 0 };
         
         existing.count += 1;
         
         if (list.status === 'CONCLUIDO' && list.completed_at) {
-          const time = differenceInMinutes(new Date(list.completed_at), new Date(list.updated_at || list.created_at));
+          const time = differenceInMinutes(new Date(list.completed_at), new Date(list.updated_at));
           existing.totalTime += time;
           existing.completedCount += 1;
         }
@@ -162,9 +175,9 @@ export function GestorOverview() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* KPIs principais */}
-      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card className="border-l-4 border-l-primary">
           <CardHeader className="pb-3">
             <CardDescription className="flex items-center gap-2">
@@ -214,7 +227,7 @@ export function GestorOverview() {
       </div>
 
       {/* Status das listas */}
-      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card className="hover:shadow-lg transition-shadow cursor-pointer">
           <CardHeader className="pb-3">
             <CardDescription className="flex items-center gap-2">
@@ -279,7 +292,7 @@ export function GestorOverview() {
                 color: 'hsl(var(--accent))',
               },
             }}
-            className="aspect-[16/9] w-full"
+            className="h-[300px]"
           >
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
@@ -324,9 +337,9 @@ export function GestorOverview() {
           <CardDescription>Histórico das últimas 20 listas de coleta</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border overflow-x-auto">
+          <div className="rounded-md border">
             <Table>
-              <TableHeader>
+               <TableHeader>
                 <TableRow>
                   <TableHead>ID</TableHead>
                   <TableHead>Solicitante</TableHead>
@@ -335,18 +348,19 @@ export function GestorOverview() {
                   <TableHead>Criada em</TableHead>
                   <TableHead>Concluída em</TableHead>
                   <TableHead className="text-right">Tempo</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       Carregando...
                     </TableCell>
                   </TableRow>
                 ) : recentLists.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       Nenhuma lista encontrada
                     </TableCell>
                   </TableRow>
@@ -379,6 +393,19 @@ export function GestorOverview() {
                             : '-'
                           }
                         </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedList(list);
+                              setShowListDialog(true);
+                            }}
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            Detalhes
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })
@@ -388,6 +415,16 @@ export function GestorOverview() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Itens pendentes de estoque */}
+      <PendingStockItems />
+
+      {/* Dialog de detalhes da lista */}
+      <ListDetailsDialog
+        list={selectedList}
+        open={showListDialog}
+        onOpenChange={setShowListDialog}
+      />
     </div>
   );
 }
